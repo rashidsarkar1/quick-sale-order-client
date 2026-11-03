@@ -52,7 +52,7 @@ import {
 } from "../components/ui/dialog";
 import { format } from "date-fns";
 import { Pagination } from "../components/common/Pagination";
-import { DateRangeSelect } from "../components/common/DateRangeSelect";
+import { isWithinTodayAndLastThreeHours } from "../utils/recentSales";
 import { apiService } from "../services/apiService";
 import { BanglaCashMemo } from "../components/common/BanglaCashMemo";
 
@@ -96,7 +96,7 @@ export function QuickSell({
   const [recentTrans, setRecentTrans] = useState<any[]>([]);
   const [recentTransMeta, setRecentTransMeta] = useState({ total: 0 });
   const [recentTransPage, setRecentTransPage] = useState(1);
-  const [recentTransRange, setRecentTransRange] = useState("all");
+  const recentTransRange = "day";
   const [recentTransLoading, setRecentTransLoading] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] =
     useState<string>("unknown");
@@ -212,7 +212,15 @@ export function QuickSell({
       )
       .then((response) => {
         if (!active) return;
-        setRecentTrans(response.data || []);
+        setRecentTrans(
+          (response.data || []).filter((transaction: any) =>
+            isWithinTodayAndLastThreeHours(
+              transaction.date ||
+                transaction.createdAt ||
+                transaction.orderDate,
+            ),
+          ),
+        );
         setRecentTransMeta({ total: response.meta?.total || 0 });
       })
       .catch(() => {
@@ -874,14 +882,6 @@ export function QuickSell({
                           Sell Price History ({recentTransMeta.total})
                         </p>
                       </div>
-                      <DateRangeSelect
-                        value={recentTransRange}
-                        onChange={(nextRange) => {
-                          setRecentTransRange(nextRange);
-                          setRecentTransPage(1);
-                        }}
-                        className="h-8 w-full sm:w-36 bg-white text-xs"
-                      />
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {recentTransLoading ? (

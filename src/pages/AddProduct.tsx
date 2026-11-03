@@ -360,7 +360,7 @@ export function AddProduct({ onBack, onCreated }: AddProductProps) {
                     )}
                   </div>
                   <span className="text-indigo-600 font-bold">
-                    ${m.sellPrice}
+                    ৳{m.sellPrice}
                   </span>
                 </div>
               ))}
@@ -662,7 +662,7 @@ export function AddProduct({ onBack, onCreated }: AddProductProps) {
                   <span
                     className={`text-lg font-black ${unitProfit >= 0 ? "text-emerald-600" : "text-rose-600"}`}
                   >
-                    ${unitProfit.toFixed(2)}
+                    ৳{unitProfit.toFixed(2)}
                   </span>
                 </div>
                 <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">

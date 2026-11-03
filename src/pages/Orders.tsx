@@ -47,6 +47,7 @@ import { apiService } from "../services/apiService";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { fetchTransactions } from "../store/slices/transactionSlice";
 import { Pagination } from "../components/common/Pagination";
+import { isWithinTodayAndLastThreeHours } from "../utils/recentSales";
 
 export function Orders({
   onNavigateToSell,
@@ -79,6 +80,11 @@ export function Orders({
 
   const itemsPerPage = 10;
   const totalPages = meta ? Math.ceil(meta.total / itemsPerPage) : 1;
+  const recentOrders = orders.filter((order) =>
+    isWithinTodayAndLastThreeHours(
+      order.createdAt || order.orderDate || order.date,
+    ),
+  );
 
   return (
     <div className="p-4 md:p-8 space-y-6 md:space-y-8 max-w-[1600px] mx-auto text-slate-900">
@@ -164,8 +170,8 @@ export function Orders({
                       Unable to load sales from the server: {error}
                     </TableCell>
                   </TableRow>
-                ) : orders.length > 0 ? (
-                  orders.map((order) => {
+                ) : recentOrders.length > 0 ? (
+                  recentOrders.map((order) => {
                     const customer = initialCustomers.find(
                       (c) =>
                         c.id === order.customerId || c._id === order.customerId,

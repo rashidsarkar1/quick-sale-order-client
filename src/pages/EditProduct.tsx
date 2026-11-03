@@ -453,7 +453,7 @@ export function EditProduct({ productId, onBack, onUpdated }: EditProductProps) 
                 <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
                   <span className="text-[10px] font-bold uppercase text-slate-400 block">Unit Profit</span>
                   <span className={`text-lg font-black ${unitProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                    ${unitProfit.toFixed(2)}
+                    ৳{unitProfit.toFixed(2)}
                   </span>
                 </div>
                 <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">

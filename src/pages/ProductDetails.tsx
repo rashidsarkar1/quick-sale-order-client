@@ -1,4 +1,3 @@
-import { TakaIcon } from "../components/common/TakaIcon";
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -9,7 +8,6 @@ import {
   Package,
   ArrowLeft,
   Users,
-  TrendingUp,
   Receipt,
   Edit3,
   AlertTriangle,
@@ -18,11 +16,8 @@ import {
   Search,
   ShoppingCart,
   Clock,
-  Calendar,
   ChevronRight,
   Tag,
-  BarChart3,
-  Layers,
   Plus,
   Minus,
   Crown,
@@ -60,18 +55,11 @@ import { useAppSelector, useAppDispatch } from "../store/hooks";
 import { fetchInventory, updateStock } from "../store/slices/inventorySlice";
 import { fetchDealers } from "../store/slices/dealerSlice";
 import { Pagination } from "../components/common/Pagination";
-import { formatVolume } from "../utils/salesUnits";
+import { isWithinTodayAndLastThreeHours } from "../utils/recentSales";
 import { apiService } from "../services/apiService";
 import { DealerReceiptUploader } from "../components/common/DealerReceiptUploader";
 import { DealerReceipt, getReceiptsByProduct } from "../utils/receiptStore";
 import { resolveApiAssetUrl } from "../lib/apiConfig";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../components/ui/select";
 
 interface ProductDetailsProps {
   productId: string | null;
@@ -106,7 +94,7 @@ export function ProductDetails({
   const leaderboardPageSize = 10;
   const [txPage, setTxPage] = useState(1);
   const txPageSize = 30;
-  const [intelligenceRange, setIntelligenceRange] = useState("all");
+  const intelligenceRange = "day";
   const [buyerOrder, setBuyerOrder] = useState<"most" | "least">("most");
   const [intelligence, setIntelligence] = useState<any>(null);
   const [intelligenceLoading, setIntelligenceLoading] = useState(false);
@@ -141,29 +129,30 @@ export function ProductDetails({
         if (!active) return;
         const result = response.data || {};
         setIntelligence(result);
-        setLastSalePrices(
-          (result.history || []).flatMap((order: any) => {
-            const item = (order.items || []).find(
-              (line: any) => String(line.productId) === String(productId),
-            );
-            const unitPrice = Number(
-              item?.unitPrice ?? item?.price ?? item?.sellPrice ?? 0,
-            );
-            return item
-              ? [
-                  {
-                    orderId: String(order._id || order.id),
-                    date: order.createdAt || order.orderDate || order.date,
-                    customerName: order.customerName || "Walk-in Customer",
-                    unitPrice: Number.isFinite(unitPrice) ? unitPrice : 0,
-                    quantity: Number(item.quantity) || 0,
-                    unit: item.unit || "Unit",
-                    receipt: order,
-                  },
-                ]
-              : [];
-          }),
-        );
+        const recentSales = (result.history || []).flatMap((order: any) => {
+          const saleDate = order.createdAt || order.orderDate || order.date;
+          if (!isWithinTodayAndLastThreeHours(saleDate)) return [];
+          const item = (order.items || []).find(
+            (line: any) => String(line.productId) === String(productId),
+          );
+          const unitPrice = Number(
+            item?.unitPrice ?? item?.price ?? item?.sellPrice ?? 0,
+          );
+          return item
+            ? [
+                {
+                  orderId: String(order._id || order.id),
+                  date: saleDate,
+                  customerName: order.customerName || "Walk-in Customer",
+                  unitPrice: Number.isFinite(unitPrice) ? unitPrice : 0,
+                  quantity: Number(item.quantity) || 0,
+                  unit: item.unit || "Unit",
+                  receipt: order,
+                },
+              ]
+            : [];
+        });
+        setLastSalePrices(recentSales);
       })
       .catch(() => {
         if (active) {
@@ -243,9 +232,6 @@ export function ProductDetails({
   }, [products, productSearch]);
 
   const customerRankings = intelligence?.buyers || [];
-  const totalVolumeSold = Number(intelligence?.summary?.totalUnits) || 0;
-  const totalGrossRevenue = Number(intelligence?.summary?.totalRevenue) || 0;
-  const totalNetProfit = Number(intelligence?.summary?.totalProfit) || 0;
   const totalLeaderboardPages =
     Math.ceil((intelligence?.buyerMeta?.total || 0) / leaderboardPageSize) || 1;
   const totalTxPages =
@@ -254,8 +240,6 @@ export function ProductDetails({
   // Inventory stats
   const currentStock = product?.quantity ?? 0;
   const threshold = product?.lowStockThreshold ?? 15;
-  const stockCostValue = currentStock * (product?.buyPrice ?? 0);
-  const stockRetailValue = currentStock * (product?.sellPrice ?? 0);
   const unitProfit = (product?.sellPrice ?? 0) - (product?.buyPrice ?? 0);
   const piecesPerUnit = Math.max(1, Number(product?.piecesPerUnit) || 1);
   const isMultiPieceUnit =
@@ -336,7 +320,7 @@ export function ProductDetails({
                     </p>
                   </div>
                   <span className="text-indigo-600 font-bold text-xs">
-                    ${p.sellPrice}
+                    ৳{p.sellPrice}
                   </span>
                 </button>
               ))}
@@ -432,7 +416,7 @@ export function ProductDetails({
                     </div>
                     <div className="text-right shrink-0 ml-2">
                       <span className="text-indigo-600 font-bold text-xs">
-                        ${p.sellPrice}
+                        ৳{p.sellPrice}
                       </span>
                       <span className="text-[10px] text-slate-400 block">
                         {p.quantity ?? 0} {p.unit}
@@ -561,96 +545,6 @@ export function ProductDetails({
           </div>
         </CardContent>
       </Card>
-
-      {/* Executive Key Metric Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Metric 1: Total Units Sold */}
-        <Card className="border-slate-200 shadow-sm rounded-2xl bg-white">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                Total Volume Sold
-              </span>
-              <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
-                <TrendingUp className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="text-2xl font-black text-slate-900 tracking-tight">
-              {formatVolume(totalVolumeSold)}{" "}
-              <span className="text-xs font-bold text-slate-400">
-                {product.unit}
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-400 mt-1">
-              Across all confirmed customer orders
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Metric 2: Total Revenue Generated */}
-        <Card className="border-slate-200 shadow-sm rounded-2xl bg-white">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                Gross Revenue
-              </span>
-              <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
-                <TakaIcon className="w-4 h-4 text-sm" />
-              </div>
-            </div>
-            <div className="text-2xl font-black text-emerald-700 tracking-tight">
-              ৳{totalGrossRevenue.toLocaleString()}
-            </div>
-            <p className="text-[11px] text-slate-400 mt-1">
-              Total sales turnover from this SKU
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Metric 3: Total Net Profit */}
-        <Card className="border-slate-200 shadow-sm rounded-2xl bg-white">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                Net Profit
-              </span>
-              <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
-                <BarChart3 className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="text-2xl font-black text-indigo-700 tracking-tight">
-              ${totalNetProfit.toLocaleString()}
-            </div>
-            <p className="text-[11px] text-slate-400 mt-1">
-              Margin:{" "}
-              <span className="font-bold text-slate-700">
-                {profitMarginPercent}%
-              </span>{" "}
-              per unit
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Metric 4: Warehouse Stock Value */}
-        <Card className="border-slate-200 shadow-sm rounded-2xl bg-white">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                Stock Valuation
-              </span>
-              <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
-                <Layers className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="text-2xl font-black text-slate-900 tracking-tight">
-              ${stockRetailValue.toLocaleString()}
-            </div>
-            <p className="text-[11px] text-slate-400 mt-1">
-              Cost Basis: ${stockCostValue.toLocaleString()}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
 
       {/* Main Grid: Specifications & "Which Customer Has More Buy" */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -920,26 +814,6 @@ export function ProductDetails({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  <Select
-                    value={intelligenceRange}
-                    onValueChange={(range) => {
-                      setIntelligenceRange(range);
-                      setLeaderboardPage(1);
-                      setTxPage(1);
-                    }}
-                  >
-                    <SelectTrigger className="h-9 w-36 bg-white text-xs font-semibold">
-                      <Calendar className="mr-2 h-3.5 w-3.5 text-slate-400" />
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All time</SelectItem>
-                      <SelectItem value="day">Today</SelectItem>
-                      <SelectItem value="week">This week</SelectItem>
-                      <SelectItem value="month">This month</SelectItem>
-                      <SelectItem value="year">This year</SelectItem>
-                    </SelectContent>
-                  </Select>
                   <div className="flex rounded-lg border border-slate-200 bg-slate-50 p-0.5">
                     <Button
                       type="button"
@@ -987,12 +861,6 @@ export function ProductDetails({
                         Total Spent
                       </TableHead>
                       <TableHead className="px-6 py-3.5 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                        Net Profit
-                      </TableHead>
-                      <TableHead className="px-6 py-3.5 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                        Share of Sales
-                      </TableHead>
-                      <TableHead className="px-6 py-3.5 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                         Last Purchase
                       </TableHead>
                     </TableRow>
@@ -1001,7 +869,7 @@ export function ProductDetails({
                     {intelligenceLoading ? (
                       <TableRow>
                         <TableCell
-                          colSpan={6}
+                          colSpan={4}
                           className="h-28 text-center text-slate-400 text-xs"
                         >
                           <RefreshCw className="mr-2 inline h-4 w-4 animate-spin" />
@@ -1012,14 +880,6 @@ export function ProductDetails({
                       paginatedRankings.map((c, idx) => {
                         const index =
                           (leaderboardPage - 1) * leaderboardPageSize + idx;
-                        const share =
-                          totalVolumeSold > 0
-                            ? (
-                                (c.totalSpent / totalGrossRevenue) *
-                                100
-                              ).toFixed(1)
-                            : "0";
-
                         return (
                           <TableRow
                             key={c.customerId}
@@ -1109,21 +969,6 @@ export function ProductDetails({
                               </span>
                             </TableCell>
 
-                            {/* Net Profit */}
-                            <TableCell className="px-6 py-4 text-right">
-                              <span className="font-black text-emerald-600 text-xs">
-                                {c.totalProfit < 0 ? "-৳" : "+৳"}
-                                {Math.abs(c.totalProfit).toLocaleString()}
-                              </span>
-                            </TableCell>
-
-                            {/* Share of Sales */}
-                            <TableCell className="px-6 py-4 text-right">
-                              <span className="font-bold text-slate-700 text-xs">
-                                {share}%
-                              </span>
-                            </TableCell>
-
                             {/* Last Purchase */}
                             <TableCell className="px-6 py-4 text-right">
                               <span className="text-xs text-slate-500">
@@ -1176,12 +1021,12 @@ export function ProductDetails({
                     Sell Price History
                   </CardTitle>
                   <CardDescription className="text-xs text-slate-500">
-                    Sales prices in the selected period for{" "}
+                    Sales prices for{" "}
                     {product.displayName || product.name}
                   </CardDescription>
                 </div>
                 <Badge className="bg-indigo-50 text-indigo-700 border-indigo-100">
-                  {intelligence?.historyMeta?.total || 0} invoices
+                  {lastSalePrices.length} invoices
                 </Badge>
               </div>
             </CardHeader>
@@ -1311,4 +1156,3 @@ export function ProductDetails({
     </div>
   );
 }
-

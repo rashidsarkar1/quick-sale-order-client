@@ -675,10 +675,10 @@ export function Inventory({
                         </TableCell>
                         <TableCell className="px-6 py-4 text-right">
                           <span className="text-sm font-black text-slate-700">
-                            ${(item.buyPrice || 0).toLocaleString()}
+                            ৳{(item.buyPrice || 0).toLocaleString()}
                           </span>
                           <span className="block text-[10px] text-indigo-600 font-bold">
-                            Sell: ${(item.sellPrice || 0).toLocaleString()}
+                            Sell: ৳{(item.sellPrice || 0).toLocaleString()}
                           </span>
                         </TableCell>
                         <TableCell className="px-6 py-4 text-right">
@@ -1103,7 +1103,7 @@ export function Inventory({
                 />
               </div>
               <p className="text-[10px] text-slate-400 italic ml-1 mt-1">
-                Current price: ${selectedItem?.sellPrice}
+                Current price: ৳{selectedItem?.sellPrice}
               </p>
             </div>
           </div>
@@ -1262,7 +1262,7 @@ export function Inventory({
                       Buy-in Point:
                     </span>
                     <span className="font-black text-slate-800">
-                      ${selectedItem?.buyPrice}
+                      ৳{selectedItem?.buyPrice}
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-xs">
@@ -1270,7 +1270,7 @@ export function Inventory({
                       Market Price:
                     </span>
                     <span className="font-black text-indigo-600">
-                      ${selectedItem?.sellPrice}
+                      ৳{selectedItem?.sellPrice}
                     </span>
                   </div>
                   <Separator className="bg-slate-200" />
